@@ -1,0 +1,1207 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CampusConnect — Die Plattform-Simulation</title>
+<style>
+  :root{
+    --bg:#12172B;
+    --bg-panel:#1B2140;
+    --bg-panel-2:#232B52;
+    --bg-panel-3: #2A3260;
+    --line: rgba(255,255,255,0.09);
+    --text:#F3F1EA;
+    --text-muted:#9AA3C2;
+    --text-dim: #6D77A0;
+    --accent-player:#FF7A45;
+    --accent-player-soft: rgba(255,122,69,0.16);
+    --accent-rival:#8C6FF7;
+    --accent-rival-soft: rgba(140,111,247,0.16);
+    --positive:#5FD48A;
+    --negative:#FF6B6B;
+    --warn:#F5C56B;
+    --radius: 16px;
+    --font-display: -apple-system, "Segoe UI", system-ui, "Helvetica Neue", Arial, sans-serif;
+    --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", "Roboto Mono", Consolas, monospace;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  body{
+    background: radial-gradient(1200px 800px at 15% -10%, #1a2148 0%, var(--bg) 55%), var(--bg);
+    color: var(--text);
+    font-family: var(--font-display);
+    min-height:100vh;
+    line-height:1.5;
+  }
+  ::selection{ background: var(--accent-player-soft); }
+  a{ color: var(--accent-player); }
+  button{ font-family: inherit; cursor:pointer; }
+  button:focus-visible, input:focus-visible, [tabindex]:focus-visible{
+    outline: 2px solid var(--accent-player);
+    outline-offset: 2px;
+  }
+  h1,h2,h3,h4{ margin:0 0 .4em 0; font-weight:800; letter-spacing:-0.01em; }
+  p{ margin:0 0 .8em 0; color: var(--text-muted); }
+  .num{ font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+  #app{ max-width: 1180px; margin: 0 auto; padding: 20px 20px 80px; }
+  .screen{ display:none; }
+  .screen.active{ display:block; animation: fadein .35s ease; }
+  @keyframes fadein{ from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:none;} }
+  @media (prefers-reduced-motion: reduce){
+    .screen.active{ animation:none; }
+    *{ transition-duration: .001ms !important; animation-duration:.001ms !important; }
+  }
+
+  /* ---------- Top brand bar ---------- */
+  .brandbar{
+    display:flex; align-items:center; justify-content:space-between;
+    padding: 6px 2px 18px;
+  }
+  .brand{ display:flex; align-items:center; gap:10px; }
+  .brand-mark{
+    width:34px; height:34px; border-radius:9px;
+    background: linear-gradient(135deg, var(--accent-player), #ffb088);
+    display:flex; align-items:center; justify-content:center;
+    font-weight:900; color:#1a1206; font-size:16px;
+  }
+  .brand-name{ font-weight:800; font-size:17px; letter-spacing:-0.02em; }
+  .brand-name span{ color: var(--accent-player); }
+  #glossary-toggle{
+    background: var(--bg-panel); color:var(--text); border:1px solid var(--line);
+    padding: 8px 14px; border-radius: 999px; font-size: 13px; font-weight:600;
+  }
+  #glossary-toggle:hover{ border-color: var(--accent-player); }
+
+  /* ---------- Intro screen ---------- */
+  .hero{
+    padding: 34px 30px 30px; border-radius: var(--radius);
+    background: linear-gradient(160deg, var(--bg-panel) 0%, var(--bg-panel-2) 100%);
+    border: 1px solid var(--line);
+    position:relative; overflow:hidden;
+    margin-bottom: 22px;
+  }
+  .hero svg.hero-graph{ position:absolute; right:-40px; top:-30px; width:420px; height:420px; opacity:.55; }
+  .eyebrow{
+    font-family: var(--font-mono); text-transform:uppercase; letter-spacing:.14em;
+    font-size: 11px; color: var(--accent-player); font-weight:700; margin-bottom:10px;
+  }
+  .hero h1{ font-size: clamp(28px, 4vw, 42px); max-width: 640px; }
+  .hero p.lead{ max-width: 560px; color: var(--text); font-size:16px; }
+  .cta-row{ display:flex; gap:12px; flex-wrap:wrap; margin-top: 20px; }
+  .btn{
+    border:none; border-radius: 12px; padding: 13px 22px; font-weight:700; font-size:14.5px;
+    transition: transform .15s ease, filter .15s ease;
+  }
+  .btn:hover{ filter:brightness(1.08); transform: translateY(-1px); }
+  .btn:active{ transform: translateY(0); }
+  .btn-primary{ background: var(--accent-player); color:#1a1206; }
+  .btn-secondary{ background: transparent; color:var(--text); border:1px solid var(--line); }
+  .btn-secondary:hover{ border-color: var(--accent-player); }
+  .btn-ghost{ background: var(--bg-panel-3); color: var(--text); }
+  .btn[disabled]{ opacity:.4; cursor:not-allowed; filter:none; transform:none; }
+
+  .primer-grid{ display:grid; grid-template-columns: repeat(4,1fr); gap:14px; margin-bottom: 22px; }
+  @media (max-width: 900px){ .primer-grid{ grid-template-columns: repeat(2,1fr); } }
+  @media (max-width: 560px){ .primer-grid{ grid-template-columns: 1fr; } }
+  .primer-card{
+    background: var(--bg-panel); border:1px solid var(--line); border-radius: 14px;
+    padding: 16px; cursor:pointer;
+  }
+  .primer-card:hover{ border-color: var(--accent-player); }
+  .primer-card .pc-icon{ font-size:22px; }
+  .primer-card h4{ font-size:14.5px; margin:8px 0 6px; }
+  .primer-card p{ font-size:12.8px; margin:0; color: var(--text-muted); }
+  .primer-card .pc-detail{ display:none; margin-top:8px; font-size:12.5px; color: var(--text); }
+  .primer-card.open .pc-detail{ display:block; }
+  .primer-card .pc-toggle{ font-size:11px; color: var(--text-dim); margin-top:6px; font-family: var(--font-mono); }
+
+  .story-card{
+    background: var(--bg-panel); border:1px solid var(--line); border-radius: var(--radius);
+    padding: 22px 24px; margin-bottom: 20px;
+  }
+  .story-card h3{ font-size:16px; }
+  .story-card p{ font-size:14.5px; color: var(--text); }
+  .story-card p:last-child{ margin-bottom:0; }
+
+  /* ---------- Game screen ---------- */
+  .game-header{
+    display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;
+    margin-bottom: 16px;
+  }
+  .round-chip{
+    font-family: var(--font-mono); background: var(--bg-panel); border:1px solid var(--line);
+    padding: 8px 14px; border-radius: 999px; font-size:13px; font-weight:700; letter-spacing:.03em;
+  }
+  .round-dots{ display:flex; gap:6px; align-items:center; }
+  .round-dot{ width:9px; height:9px; border-radius:50%; background: var(--bg-panel-3); }
+  .round-dot.done{ background: var(--accent-player); }
+  .round-dot.current{ background: var(--accent-player); box-shadow:0 0 0 3px var(--accent-player-soft); }
+  .budget-chip{
+    font-family: var(--font-mono); background: var(--accent-player-soft); color: var(--accent-player);
+    border: 1px solid rgba(255,122,69,.35); padding: 8px 14px; border-radius: 999px; font-size:13px; font-weight:700;
+  }
+
+  .event-banner{
+    display:none; gap:12px; align-items:flex-start;
+    background: linear-gradient(90deg, rgba(245,197,107,.14), rgba(245,197,107,.04));
+    border:1px solid rgba(245,197,107,.35); border-radius: 14px; padding: 14px 16px; margin-bottom:16px;
+  }
+  .event-banner.show{ display:flex; }
+  .event-banner .ev-icon{ font-size:22px; line-height:1; }
+  .event-banner h4{ font-size:14px; margin:0 0 3px; color: var(--warn); }
+  .event-banner p{ margin:0; font-size:13px; color: var(--text); }
+
+  .platforms-grid{ display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-bottom:16px; }
+  @media (max-width: 800px){ .platforms-grid{ grid-template-columns: 1fr; } }
+
+  .platform-card{
+    border-radius: var(--radius); padding: 18px; border:1px solid var(--line);
+    background: var(--bg-panel);
+  }
+  .platform-card.player{ border-color: rgba(255,122,69,.35); background: linear-gradient(160deg, rgba(255,122,69,.07), var(--bg-panel) 55%); }
+  .platform-card.rival{ border-color: rgba(140,111,247,.35); background: linear-gradient(160deg, rgba(140,111,247,.07), var(--bg-panel) 55%); }
+  .pcard-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+  .pcard-head h3{ font-size:15px; margin:0; display:flex; align-items:center; gap:8px; }
+  .tag{ font-family: var(--font-mono); font-size:10.5px; padding:3px 8px; border-radius:999px; }
+  .tag.you{ background: var(--accent-player-soft); color: var(--accent-player); }
+  .tag.rival{ background: var(--accent-rival-soft); color: var(--accent-rival); }
+
+  .graph-wrap{ width:100%; aspect-ratio: 300/210; }
+  .graph-wrap svg{ width:100%; height:100%; display:block; }
+
+  .stat-grid{ display:grid; grid-template-columns: repeat(2,1fr); gap:10px; margin-top:14px; }
+  .stat{
+    background: rgba(255,255,255,.03); border:1px solid var(--line); border-radius:10px; padding:9px 11px;
+  }
+  .stat .stat-label{ font-size:10.5px; color: var(--text-muted); text-transform:uppercase; letter-spacing:.06em; }
+  .stat .stat-value{ font-family: var(--font-mono); font-size:18px; font-weight:700; margin-top:2px; }
+  .stat .stat-sub{ font-size:10.5px; color: var(--text-dim); margin-top:1px; }
+  .bar-track{ height:5px; border-radius:3px; background: rgba(255,255,255,.08); margin-top:6px; overflow:hidden; }
+  .bar-fill{ height:100%; border-radius:3px; }
+  .player .bar-fill{ background: var(--accent-player); }
+  .rival .bar-fill{ background: var(--accent-rival); }
+
+  .charts-grid{ display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px; }
+  @media (max-width:800px){ .charts-grid{ grid-template-columns:1fr; } }
+  .chart-card{ background: var(--bg-panel); border:1px solid var(--line); border-radius: var(--radius); padding:16px; }
+  .chart-card h4{ font-size:13px; color: var(--text-muted); font-weight:700; text-transform:uppercase; letter-spacing:.05em; }
+  .chart-card svg{ width:100%; height:150px; display:block; }
+  .legend{ display:flex; gap:14px; margin-top:6px; font-size:11.5px; color: var(--text-muted); }
+  .legend span{ display:inline-flex; align-items:center; gap:5px; }
+  .legend i{ width:10px; height:10px; border-radius:3px; display:inline-block; }
+
+  .controls-card{
+    background: var(--bg-panel); border:1px solid var(--line); border-radius: var(--radius);
+    padding: 20px 22px; margin-bottom:16px;
+  }
+  .controls-head{ display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:14px;}
+  .remaining{ font-family: var(--font-mono); font-size:13px; padding:6px 12px; border-radius:999px; background: var(--bg-panel-3); }
+  .remaining.ok{ color: var(--positive); }
+  .remaining.over{ color: var(--negative); }
+
+  .slider-row{ margin-bottom:16px; }
+  .slider-row-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
+  .slider-label{ display:flex; align-items:center; gap:8px; font-size:13.5px; font-weight:600; }
+  .slider-label .ico{ font-size:16px; }
+  .info-btn{
+    width:17px; height:17px; border-radius:50%; border:1px solid var(--line); background:transparent;
+    color: var(--text-dim); font-size:10.5px; font-family: var(--font-mono); line-height:1; display:inline-flex;
+    align-items:center; justify-content:center; padding:0;
+  }
+  .info-btn:hover{ border-color: var(--accent-player); color: var(--accent-player); }
+  .slider-value{ font-family: var(--font-mono); font-size:13px; color: var(--accent-player); font-weight:700; }
+  .slider-tip{ display:none; font-size:12px; color: var(--text-muted); margin-top:5px; background: rgba(255,255,255,.03); border-radius:8px; padding:8px 10px; }
+  .slider-tip.show{ display:block; }
+  input[type=range]{
+    -webkit-appearance:none; width:100%; height:6px; border-radius:3px;
+    background: var(--bg-panel-3); outline:none;
+  }
+  input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none; width:18px; height:18px; border-radius:50%;
+    background: var(--accent-player); border:3px solid #1a1206; cursor:pointer;
+  }
+  input[type=range]::-moz-range-thumb{
+    width:18px; height:18px; border-radius:50%; background: var(--accent-player); border:3px solid #1a1206; cursor:pointer;
+  }
+  .provision-row input[type=range]::-webkit-slider-thumb{ background: var(--warn); }
+  .provision-row input[type=range]::-moz-range-thumb{ background: var(--warn); }
+  .provision-row .slider-value{ color: var(--warn); }
+
+  .controls-actions{ display:flex; gap:10px; justify-content:flex-end; margin-top:18px; flex-wrap:wrap; }
+
+  .log-feed{
+    background: #0E1226; border:1px solid var(--line); border-radius: var(--radius);
+    padding: 16px 18px; max-height: 230px; overflow-y:auto; font-family: var(--font-mono); font-size:12.5px;
+  }
+  .log-feed h4{ font-size:12px; text-transform:uppercase; letter-spacing:.08em; color: var(--text-dim); margin:0 0 10px; font-family: var(--font-display); }
+  .log-entry{ padding: 9px 0; border-bottom:1px dashed var(--line); color: var(--text-muted); }
+  .log-entry:last-child{ border-bottom:none; }
+  .log-entry .lr{ color: var(--accent-player); font-weight:700; margin-right:6px; }
+  .log-entry .badge-inline{ color: var(--warn); }
+
+  /* ---------- Modal ---------- */
+  .modal-overlay{
+    display:none; position:fixed; inset:0; background: rgba(6,8,20,.72);
+    backdrop-filter: blur(3px); z-index:50; align-items:center; justify-content:center; padding:20px;
+  }
+  .modal-overlay.show{ display:flex; }
+  .modal{
+    background: var(--bg-panel); border:1px solid var(--line); border-radius:18px;
+    max-width: 560px; width:100%; padding: 26px 26px 22px; max-height:86vh; overflow-y:auto;
+  }
+  .modal h3{ font-size:19px; }
+  .modal .modal-round{ font-family: var(--font-mono); font-size:12px; color: var(--accent-player); text-transform:uppercase; letter-spacing:.08em; margin-bottom:6px; }
+  .modal p{ font-size:14px; color: var(--text); }
+  .delta-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin: 14px 0; }
+  .delta{ background: rgba(255,255,255,.04); border-radius:10px; padding:10px; text-align:center; }
+  .delta .d-label{ font-size:10.5px; color: var(--text-muted); text-transform:uppercase; }
+  .delta .d-value{ font-family: var(--font-mono); font-size:17px; font-weight:700; margin-top:3px; }
+  .delta .d-value.pos{ color: var(--positive); }
+  .delta .d-value.neg{ color: var(--negative); }
+  .badge-unlock{
+    display:flex; align-items:center; gap:10px; background: rgba(245,197,107,.12);
+    border:1px solid rgba(245,197,107,.35); border-radius:12px; padding:10px 12px; margin-top:10px; font-size:13px;
+  }
+
+  /* ---------- End screen ---------- */
+  .end-hero{
+    text-align:center; padding: 40px 24px; border-radius: var(--radius);
+    background: linear-gradient(160deg, var(--bg-panel-2), var(--bg-panel)); border:1px solid var(--line);
+    margin-bottom:22px;
+  }
+  .end-hero .outcome-icon{ font-size:44px; }
+  .end-hero h2{ font-size: clamp(24px,3.4vw,32px); margin: 10px 0 6px; }
+  .end-hero p{ max-width:560px; margin:0 auto; font-size:14.5px; }
+
+  .final-table{ width:100%; border-collapse:collapse; margin-bottom:22px; font-size:13.5px; }
+  .final-table th, .final-table td{ padding:11px 12px; text-align:right; border-bottom:1px solid var(--line); }
+  .final-table th:first-child, .final-table td:first-child{ text-align:left; color:var(--text-muted); font-weight:600; }
+  .final-table th{ color: var(--text-muted); font-weight:700; font-size:11.5px; text-transform:uppercase; letter-spacing:.05em; }
+  .final-table td.player-col{ color: var(--accent-player); font-family: var(--font-mono); font-weight:700; }
+  .final-table td.rival-col{ color: var(--accent-rival); font-family: var(--font-mono); font-weight:700; }
+
+  .badges-grid{ display:grid; grid-template-columns: repeat(auto-fill, minmax(150px,1fr)); gap:12px; margin-bottom:24px; }
+  .badge-card{ background: var(--bg-panel); border:1px solid var(--line); border-radius:12px; padding:14px; text-align:center; }
+  .badge-card .b-icon{ font-size:26px; }
+  .badge-card h5{ font-size:12.5px; margin:8px 0 3px; }
+  .badge-card p{ font-size:10.5px; margin:0; color: var(--text-dim); }
+  .badge-card.empty{ opacity:.35; }
+
+  .debrief-section{ background: var(--bg-panel); border:1px solid var(--line); border-radius:14px; padding:18px 20px; margin-bottom:12px; }
+  .debrief-section h4{ font-size:14.5px; display:flex; align-items:center; gap:8px; }
+  .debrief-section p{ font-size:13.5px; color: var(--text); margin-bottom:6px; }
+  .debrief-section p:last-child{ margin-bottom:0; }
+  .debrief-section .num{ color: var(--accent-player); font-weight:700; }
+
+  /* ---------- Glossary panel ---------- */
+  .glossary-panel{
+    position: fixed; top:0; right:-380px; width:360px; height:100%; background: var(--bg-panel);
+    border-left:1px solid var(--line); z-index:60; padding: 24px; overflow-y:auto; transition: right .28s ease;
+  }
+  .glossary-panel.open{ right:0; }
+  .glossary-panel h3{ font-size:16px; }
+  .glossary-panel .g-item{ margin-bottom:18px; }
+  .glossary-panel .g-item h5{ font-size:13.5px; margin:0 0 4px; color: var(--accent-player); }
+  .glossary-panel .g-item p{ font-size:12.8px; margin:0; }
+  .glossary-close{ position:absolute; top:18px; right:18px; background:none; border:none; color:var(--text-muted); font-size:20px; }
+  .scrim{ display:none; position:fixed; inset:0; background:rgba(0,0,0,.4); z-index:55; }
+  .scrim.show{ display:block; }
+
+  .toast-wrap{ position:fixed; bottom:20px; right:20px; z-index:70; display:flex; flex-direction:column; gap:8px; }
+  .toast{
+    background: var(--bg-panel-2); border:1px solid var(--accent-player); border-radius:10px;
+    padding:10px 14px; font-size:12.5px; max-width:280px; animation: toastin .3s ease;
+  }
+  @keyframes toastin{ from{opacity:0; transform:translateY(10px);} to{opacity:1; transform:none;} }
+
+  .footer-note{ text-align:center; color: var(--text-dim); font-size:11.5px; margin-top:30px; }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <div class="brandbar">
+    <div class="brand">
+      <div class="brand-mark">CC</div>
+      <div class="brand-name">Campus<span>Connect</span> — Plattform-Simulation</div>
+    </div>
+    <button id="glossary-toggle" onclick="openGlossary()">📖 Konzepte</button>
+  </div>
+
+  <!-- ===================== INTRO ===================== -->
+  <section id="screen-intro" class="screen active">
+    <div class="hero">
+      <svg class="hero-graph" viewBox="0 0 300 300"><g id="hero-graph-g"></g></svg>
+      <div class="eyebrow">Simulation · Wirtschaftsinformatik · Plattformökonomie</div>
+      <h1>Wer erobert das Campus-Ökosystem?</h1>
+      <p class="lead">Du baust <strong>CampusConnect</strong> auf — eine App, die Studierende mit Cafés, Copyshops, Nachhilfe und Vereinen rund um den Campus vernetzt. Dein Gegenspieler <strong>UniMarkt</strong> will denselben Markt. Über 8 Runden entscheidest du, wie du wächst — und ob am Ende Netzwerkeffekte für dich arbeiten, oder gegen dich.</p>
+      <div class="cta-row">
+        <button class="btn btn-primary" onclick="goToScreen('game'); startGame();">Simulation starten →</button>
+        <button class="btn btn-secondary" onclick="document.getElementById('primer-anchor').scrollIntoView({behavior:'smooth'})">Erst die Konzepte ansehen</button>
+      </div>
+    </div>
+
+    <div id="primer-anchor"></div>
+    <div class="primer-grid" id="primer-grid"></div>
+
+    <div class="story-card">
+      <h3>🎯 Deine Ausgangslage</h3>
+      <p><strong>CampusConnect</strong> und <strong>UniMarkt</strong> starten bei null: je 50 Studierende, je 5 Partnerbetriebe. In jeder Runde verteilst du ein Budget auf vier Hebel — Marketing für Studierende, Akquise von Partnern, direkte Netzwerk-Features (z. B. eine Freunde-Funktion) und Partner-Tools (z. B. Kassenanbindung). Dazu legst du fest, wie viel Provision du von Partnern verlangst. UniMarkt reagiert auf deine Züge — mal geschickt, mal überraschend. Am Ende siehst du, ob dein Markt <em>gekippt</em> ist.</p>
+      <p style="margin-bottom:0;">Es gibt insgesamt rund 6.000 Studierende und 200 Partnerbetriebe rund um den Campus zu gewinnen — der Markt ist also begrenzt. Jeder Durchlauf verläuft anders. Probiere ruhig mehrere Strategien aus!</p>
+    </div>
+  </section>
+
+  <!-- ===================== GAME ===================== -->
+  <section id="screen-game" class="screen">
+    <div class="game-header">
+      <div class="round-chip" id="round-chip">RUNDE 1 / 8</div>
+      <div class="round-dots" id="round-dots"></div>
+      <div class="budget-chip" id="budget-chip">💰 Budget: 1000</div>
+    </div>
+
+    <div class="event-banner" id="event-banner">
+      <div class="ev-icon" id="event-icon">📚</div>
+      <div>
+        <h4 id="event-title"></h4>
+        <p id="event-desc"></p>
+      </div>
+    </div>
+
+    <div class="platforms-grid">
+      <div class="platform-card player">
+        <div class="pcard-head">
+          <h3>🚀 CampusConnect <span class="tag you">DU</span></h3>
+        </div>
+        <div class="graph-wrap"><svg id="graph-player" viewBox="0 0 300 210"></svg></div>
+        <div class="stat-grid" id="stats-player"></div>
+      </div>
+      <div class="platform-card rival">
+        <div class="pcard-head">
+          <h3>🏢 UniMarkt <span class="tag rival">KONKURRENZ</span></h3>
+        </div>
+        <div class="graph-wrap"><svg id="graph-rival" viewBox="0 0 300 210"></svg></div>
+        <div class="stat-grid" id="stats-rival"></div>
+      </div>
+    </div>
+
+    <div class="charts-grid">
+      <div class="chart-card">
+        <h4>Studierende im Zeitverlauf</h4>
+        <svg id="chart-users" viewBox="0 0 400 150"></svg>
+        <div class="legend"><span><i style="background:var(--accent-player)"></i>CampusConnect</span><span><i style="background:var(--accent-rival)"></i>UniMarkt</span></div>
+      </div>
+      <div class="chart-card">
+        <h4>Partnerbetriebe im Zeitverlauf</h4>
+        <svg id="chart-partners" viewBox="0 0 400 150"></svg>
+        <div class="legend"><span><i style="background:var(--accent-player)"></i>CampusConnect</span><span><i style="background:var(--accent-rival)"></i>UniMarkt</span></div>
+      </div>
+    </div>
+
+    <div class="controls-card">
+      <div class="controls-head">
+        <h3 style="margin:0;">Deine Entscheidungen</h3>
+        <div class="remaining" id="remaining-chip">Verbleibend: 1000</div>
+      </div>
+      <div id="sliders-container"></div>
+
+      <div class="slider-row provision-row">
+        <div class="slider-row-head">
+          <div class="slider-label"><span class="ico">💳</span> Provision von Partnern
+            <button class="info-btn" onclick="toggleTip('tip-provision')">i</button>
+          </div>
+          <div class="slider-value" id="val-provision">15%</div>
+        </div>
+        <input type="range" id="slider-provision" min="0" max="25" step="1" value="15" oninput="onProvisionInput()">
+        <div class="slider-tip" id="tip-provision">Deine Haupteinnahmequelle. Hohe Provisionen bringen mehr Umsatz pro Partner — aber zu hohe Sätze verärgern Partner und erhöhen deren Abwanderung. Ein Klassiker aus der Plattformökonomie: die "richtige" Bepreisung der zwei Marktseiten.</div>
+      </div>
+
+      <div class="controls-actions">
+        <button class="btn btn-ghost" onclick="distributeEvenly()">⚖️ Gleichmäßig verteilen</button>
+        <button class="btn btn-primary" id="confirm-btn" onclick="confirmRound()">Runde bestätigen ✅</button>
+      </div>
+    </div>
+
+    <div class="log-feed" id="log-feed">
+      <h4>Rundenprotokoll</h4>
+      <div id="log-entries"></div>
+    </div>
+  </section>
+
+  <!-- ===================== END ===================== -->
+  <section id="screen-end" class="screen">
+    <div class="end-hero">
+      <div class="outcome-icon" id="end-icon">🏆</div>
+      <h2 id="end-title">Ergebnis</h2>
+      <p id="end-desc"></p>
+    </div>
+
+    <table class="final-table">
+      <thead>
+        <tr><th>Kennzahl</th><th>CampusConnect (du)</th><th>UniMarkt</th></tr>
+      </thead>
+      <tbody id="final-table-body"></tbody>
+    </table>
+
+    <h3>🏅 Erreichte Erfolge</h3>
+    <div class="badges-grid" id="badges-grid"></div>
+
+    <h3>📚 Was du gelernt hast</h3>
+    <div id="debrief-container"></div>
+
+    <div class="cta-row" style="margin-top:22px;">
+      <button class="btn btn-primary" onclick="resetGame()">🔁 Noch einmal spielen</button>
+    </div>
+
+    <p class="footer-note">CampusConnect ist eine fiktive Lernsimulation für die Lehre der Plattformökonomie (direkte & indirekte Netzwerkeffekte, Skalen- und Lock-in-Effekte). Alle Zahlen sind vereinfachte Modellwerte.</p>
+  </section>
+</div>
+
+<div class="scrim" id="scrim" onclick="closeGlossary()"></div>
+<div class="glossary-panel" id="glossary-panel">
+  <button class="glossary-close" onclick="closeGlossary()">✕</button>
+  <h3>📖 Konzept-Glossar</h3>
+  <div id="glossary-items"></div>
+</div>
+
+<div class="modal-overlay" id="round-modal">
+  <div class="modal">
+    <div class="modal-round" id="modal-round-label">Runde 1 abgeschlossen</div>
+    <h3 id="modal-title">So lief die Runde</h3>
+    <p id="modal-narration"></p>
+    <div class="delta-grid" id="modal-deltas"></div>
+    <div id="modal-badges"></div>
+    <div class="cta-row" style="margin-top:16px; justify-content:flex-end;">
+      <button class="btn btn-primary" id="modal-next-btn" onclick="closeRoundModal()">Weiter →</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-wrap" id="toast-wrap"></div>
+
+<script>
+/* =========================================================
+   CampusConnect — Netzwerkeffekt-Simulation
+   Reines Vanilla JS, keine externen Abhängigkeiten.
+========================================================= */
+
+const CONFIG = {
+  TOTAL_ROUNDS: 8,
+  BASE_BUDGET: 1000,
+  TOTAL_STUDENTS: 6000,
+  TOTAL_PARTNERS: 200,
+  START_NUTZER: 50,
+  START_PARTNER: 5,
+};
+
+const CONCEPTS = [
+  {
+    id: 'direct',
+    icon: '👥',
+    title: 'Direkte Netzwerkeffekte',
+    short: 'Der Wert für eine Nutzergruppe steigt mit der Anzahl der Nutzer *derselben* Seite.',
+    detail: 'Mehr Studierende auf CampusConnect bedeuten mehr Freund:innen zu finden, mehr Bewertungen, mehr Gruppen-Rabatte. Der Nutzen für dich als Studi wächst also direkt mit der Zahl anderer Studis auf der Plattform — unabhängig von den Partnerbetrieben. Im Spiel steuerst du das über "Direkte Netzwerk-Features".'
+  },
+  {
+    id: 'indirect',
+    icon: '🔁',
+    title: 'Indirekte Netzwerkeffekte',
+    short: 'Der Wert für eine Marktseite steigt mit der Anzahl der Teilnehmer auf der *anderen* Seite.',
+    detail: 'Mehr Partnerbetriebe machen die App für Studierende attraktiver (größere Auswahl) — und mehr Studierende machen die App für Partner attraktiver (mehr potenzielle Kund:innen). Diese Kreuzeffekte zwischen zwei Marktseiten sind das Herzstück zweiseitiger Plattformen. Im Spiel steuerst du das über "Partner-Tools & Integration" und die Balance beider Nutzergruppen.'
+  },
+  {
+    id: 'scale',
+    icon: '📈',
+    title: 'Skaleneffekte (Economies of Scale)',
+    short: 'Mit wachsender Größe sinken die Kosten pro zusätzlichem Nutzer bzw. Partner.',
+    detail: 'Je größer CampusConnect wird, desto günstiger wird es, neue Studierende zu gewinnen (Marketing wirkt effizienter, Mundpropaganda übernimmt einen Teil der Arbeit) — und desto mehr Umsatz kannst du in weiteres Wachstum reinvestieren. Das erzeugt einen sich selbst verstärkenden Kreislauf ("Flywheel").'
+  },
+  {
+    id: 'lockin',
+    icon: '🔒',
+    title: 'Lock-in-Effekte',
+    short: 'Wechselkosten binden Nutzer und Partner auch dann, wenn ein Konkurrent kurzfristig attraktiver wirkt.',
+    detail: 'Je länger und intensiver Studierende und Partner CampusConnect nutzen (z. B. weil Partner ihre Kassensysteme integriert haben, oder Studierende Punkte/Historie aufgebaut haben), desto teurer wird für sie ein Wechsel zu UniMarkt — selbst wenn UniMarkt kurzfristig bessere Konditionen bietet. Das reduziert die Abwanderungsrate (Churn).'
+  }
+];
+
+const EVENTS = [
+  {
+    id: 'semesterstart',
+    icon: '📚',
+    title: 'Semesterstart!',
+    desc: 'Tausende Erstsemester suchen Orientierung. Nutzer-Marketing wirkt diese Runde für beide Plattformen stärker.',
+    apply: (mods) => { mods.mktUserMultPlayer *= 1.6; mods.mktUserMultComp *= 1.6; }
+  },
+  {
+    id: 'presscomp',
+    icon: '📰',
+    title: 'UniMarkt in den Schlagzeilen',
+    desc: 'Die Konkurrenz bekommt kostenlose Presse aus dem Hochschulmagazin — ihr Marketing wirkt diese Runde stärker.',
+    apply: (mods) => { mods.mktUserMultComp *= 1.7; }
+  },
+  {
+    id: 'scandalcomp',
+    icon: '⚠️',
+    title: 'Datenpanne bei UniMarkt',
+    desc: 'UniMarkt verliert nach einer Datenpanne das Vertrauen einiger Nutzer:innen — erhöhte Abwanderung diese Runde.',
+    apply: (mods) => { mods.churnExtraComp += 0.05; }
+  },
+  {
+    id: 'examweek',
+    icon: '📝',
+    title: 'Klausurenphase',
+    desc: 'Alle sind im Lernmodus — Mundpropaganda-Effekte sind diese Runde für beide Seiten schwächer.',
+    apply: (mods) => { mods.organicMult *= 0.5; }
+  },
+  {
+    id: 'partnerdeal',
+    icon: '🤝',
+    title: 'Studierendenwerk offen für Kooperation',
+    desc: 'Ein großer Kooperationspartner ist gesprächsbereit — deine Partner-Akquise wirkt diese Runde stärker.',
+    apply: (mods) => { mods.mktPartnerMultPlayer *= 1.7; }
+  },
+  {
+    id: 'techtrouble',
+    icon: '🛠️',
+    title: 'Serverprobleme',
+    desc: 'Kurzer technischer Ausfall bei euch — ohne solide Partner-Tools trübt das diese Runde die Stimmung. Leichte Zusatzabwanderung.',
+    apply: (mods) => { mods.churnExtraPlayer += 0.02; }
+  },
+];
+
+const BADGE_DEFS = {
+  kritische_masse: { icon:'🚀', label:'Kritische Masse', desc:'500+ Studierende erreicht' },
+  flywheel: { icon:'🔥', label:'Flywheel gezündet', desc:'Klarer Netzwerkwert-Vorsprung bei Studierenden' },
+  skalenmeister: { icon:'📉', label:'Skalenmeister', desc:'Akquisekosten pro Nutzer halbiert' },
+  lockin_champion: { icon:'🔒', label:'Lock-in-Champion', desc:'Hohe Wechselkosten aufgebaut' },
+  communitybuilder: { icon:'👥', label:'Community-Builder', desc:'Direkte Netzwerk-Features stark ausgebaut' },
+  systemarchitekt: { icon:'🧩', label:'Systemarchitekt', desc:'Partner-Integrationen stark ausgebaut' },
+};
+
+/* ---------------- Game State ---------------- */
+let game = null;
+
+function newPlatform(){
+  return {
+    nutzer: CONFIG.START_NUTZER,
+    partner: CONFIG.START_PARTNER,
+    cumFeat: 0,
+    cumTools: 0,
+    lockInUser: 0,
+    lockInPartner: 0,
+    provision: 0.15,
+    nutzerHist: [CONFIG.START_NUTZER],
+    partnerHist: [CONFIG.START_PARTNER],
+    cacUserHist: [ 6/(1+CONFIG.START_NUTZER/400) ],
+    revenueHist: [0],
+    totalRevenue: 0,
+    _lastShareUser: 0.5,
+    _lastSharePartner: 0.5,
+  };
+}
+
+function freshGame(){
+  return {
+    round: 0,
+    budgetPlayer: CONFIG.BASE_BUDGET,
+    budgetComp: CONFIG.BASE_BUDGET,
+    player: newPlatform(),
+    comp: newPlatform(),
+    sliders: { mktUser: 400, mktPartner: 250, featDirect: 200, toolsIndirect: 150 },
+    badges: new Map(),
+    logs: [],
+    eventThisRound: null,
+    lastEventIds: [],
+    over: false,
+  };
+}
+
+/* ---------------- Helpers ---------------- */
+function clamp(v, a, b){ return Math.max(a, Math.min(b, v)); }
+function fmt(n, dec){ return Number(n).toLocaleString('de-DE', {maximumFractionDigits: dec===undefined?0:dec, minimumFractionDigits: dec===undefined?0:0}); }
+function pct(n){ return Math.round(n*100)+'%'; }
+function saturating(cum, k, max){ k = k||3000; max = max===undefined?2:max; return max*(1-Math.exp(-cum/k)); }
+
+function computeValues(p){
+  const featureLevel = saturating(p.cumFeat);
+  const toolsLevel = saturating(p.cumTools);
+  const valueUser = 8*featureLevel*Math.log(1+p.nutzer) + 5*toolsLevel*Math.log(1+p.partner);
+  const valuePartner = 10*toolsLevel*Math.log(1+p.nutzer) + 1*Math.log(1+p.partner);
+  return { featureLevel, toolsLevel, valueUser, valuePartner };
+}
+
+/* ---------------- AI competitor ---------------- */
+function compAIAllocate(){
+  const pv = computeValues(game.player);
+  const cv = computeValues(game.comp);
+  const gapUser = pv.valueUser - cv.valueUser;
+  const gapPartner = pv.valuePartner - cv.valuePartner;
+  let wMktUser = 0.30 + (gapUser>0?0.15:0) + Math.random()*0.10;
+  let wMktPartner = 0.25 + (gapPartner>0?0.15:0) + Math.random()*0.10;
+  let wFeat = 0.25 + Math.random()*0.10;
+  let wTools = 0.20 + Math.random()*0.10;
+  const sum = wMktUser+wMktPartner+wFeat+wTools;
+  const b = game.budgetComp;
+  game.comp.provision = clamp(game.comp.provision + (Math.random()-0.5)*0.02, 0.08, 0.22);
+  return {
+    mktUser: b*wMktUser/sum,
+    mktPartner: b*wMktPartner/sum,
+    featDirect: b*wFeat/sum,
+    toolsIndirect: b*wTools/sum,
+  };
+}
+
+/* ---------------- Event selection ---------------- */
+function pickEvent(){
+  if (game.round < 2) return null;
+  if (Math.random() > 0.55) return null;
+  let pool = EVENTS.filter(e => !game.lastEventIds.includes(e.id));
+  if (pool.length===0) pool = EVENTS;
+  const ev = pool[Math.floor(Math.random()*pool.length)];
+  game.lastEventIds.push(ev.id);
+  if (game.lastEventIds.length>2) game.lastEventIds.shift();
+  return ev;
+}
+
+/* ---------------- Core round simulation ---------------- */
+function simulateRound(){
+  game.round++;
+  game.eventThisRound = pickEvent();
+  const mods = { mktUserMultPlayer:1, mktUserMultComp:1, mktPartnerMultPlayer:1, mktPartnerMultComp:1, organicMult:1, churnExtraComp:0, churnExtraPlayer:0 };
+  if (game.eventThisRound) game.eventThisRound.apply(mods);
+
+  const pAlloc = { mktUser: game.sliders.mktUser, mktPartner: game.sliders.mktPartner, featDirect: game.sliders.featDirect, toolsIndirect: game.sliders.toolsIndirect };
+  const cAlloc = compAIAllocate();
+
+  game.player.cumFeat += pAlloc.featDirect;
+  game.player.cumTools += pAlloc.toolsIndirect;
+  game.comp.cumFeat += cAlloc.featDirect;
+  game.comp.cumTools += cAlloc.toolsIndirect;
+
+  const pv = computeValues(game.player);
+  const cv = computeValues(game.comp);
+
+  const cacUserP = 6/(1+game.player.nutzer/400);
+  const cacUserC = 6/(1+game.comp.nutzer/400);
+  const cacPartnerP = 40/(1+game.player.partner/60);
+  const cacPartnerC = 40/(1+game.comp.partner/60);
+
+  const remUser = Math.max(0, CONFIG.TOTAL_STUDENTS - game.player.nutzer - game.comp.nutzer);
+  const satUser = clamp(remUser/(0.30*CONFIG.TOTAL_STUDENTS), 0, 1);
+  const remPartner = Math.max(0, CONFIG.TOTAL_PARTNERS - game.player.partner - game.comp.partner);
+  const satPartner = clamp(remPartner/(0.30*CONFIG.TOTAL_PARTNERS), 0, 1);
+
+  const shareUser = pv.valueUser/(pv.valueUser+cv.valueUser+1e-6);
+  const shareUserC = 1-shareUser;
+  const sharePartner = pv.valuePartner/(pv.valuePartner+cv.valuePartner+1e-6);
+  const sharePartnerC = 1-sharePartner;
+
+  const nutzerBeforeP = game.player.nutzer, nutzerBeforeC = game.comp.nutzer;
+  const partnerBeforeP = game.player.partner, partnerBeforeC = game.comp.partner;
+
+  let newUsersP = (pAlloc.mktUser/cacUserP*mods.mktUserMultPlayer + 0.02*pv.featureLevel*game.player.nutzer*mods.organicMult) * (0.5+shareUser) * satUser;
+  let churnUserP = game.player.nutzer*0.06*(1-game.player.lockInUser) + mods.churnExtraPlayer*game.player.nutzer;
+  game.player.nutzer = Math.max(0, game.player.nutzer + newUsersP - churnUserP);
+
+  let newUsersC = (cAlloc.mktUser/cacUserC*mods.mktUserMultComp + 0.02*cv.featureLevel*game.comp.nutzer*mods.organicMult) * (0.5+shareUserC) * satUser;
+  let churnUserC = game.comp.nutzer*0.06*(1-game.comp.lockInUser) + mods.churnExtraComp*game.comp.nutzer;
+  game.comp.nutzer = Math.max(0, game.comp.nutzer + newUsersC - churnUserC);
+
+  const provisionPenaltyP = Math.max(0, game.sliderProvision - 0.15) * 0.5;
+  let newPartnersP = (pAlloc.mktPartner/cacPartnerP*mods.mktPartnerMultPlayer + 0.01*pv.toolsLevel*game.player.partner) * (0.5+sharePartner) * satPartner;
+  let churnPartnerP = game.player.partner*(0.05+provisionPenaltyP)*(1-game.player.lockInPartner);
+  game.player.partner = Math.max(0, game.player.partner + newPartnersP - churnPartnerP);
+
+  const provisionPenaltyC = Math.max(0, game.comp.provision - 0.15) * 0.5;
+  let newPartnersC = (cAlloc.mktPartner/cacPartnerC*mods.mktPartnerMultComp + 0.01*cv.toolsLevel*game.comp.partner) * (0.5+sharePartnerC) * satPartner;
+  let churnPartnerC = game.comp.partner*(0.05+provisionPenaltyC)*(1-game.comp.lockInPartner);
+  game.comp.partner = Math.max(0, game.comp.partner + newPartnersC - churnPartnerC);
+
+  game.player.lockInUser = Math.min(0.70, game.player.lockInUser + 0.03*pv.featureLevel);
+  game.player.lockInPartner = Math.min(0.75, game.player.lockInPartner + 0.04*pv.toolsLevel);
+  game.comp.lockInUser = Math.min(0.70, game.comp.lockInUser + 0.03*cv.featureLevel);
+  game.comp.lockInPartner = Math.min(0.75, game.comp.lockInPartner + 0.04*cv.toolsLevel);
+
+  game.player.provision = game.sliderProvision;
+  const revenueP = game.player.nutzer * 14 * game.player.provision;
+  const revenueC = game.comp.nutzer * 14 * game.comp.provision;
+  game.player.totalRevenue += revenueP;
+  game.comp.totalRevenue += revenueC;
+
+  game.budgetPlayer = clamp(CONFIG.BASE_BUDGET + 0.35*revenueP, 500, 4200);
+  game.budgetComp = clamp(CONFIG.BASE_BUDGET + 0.35*revenueC, 500, 4200);
+
+  game.player.nutzerHist.push(game.player.nutzer);
+  game.player.partnerHist.push(game.player.partner);
+  game.comp.nutzerHist.push(game.comp.nutzer);
+  game.comp.partnerHist.push(game.comp.partner);
+  game.player.cacUserHist.push(cacUserP);
+  game.comp.cacUserHist.push(cacUserC);
+  game.player.revenueHist.push(revenueP);
+  game.comp.revenueHist.push(revenueC);
+
+  game.player._lastValues = pv; game.comp._lastValues = cv;
+  game.player._lastShareUser = shareUser; game.player._lastSharePartner = sharePartner;
+  game.comp._lastShareUser = shareUserC; game.comp._lastSharePartner = sharePartnerC;
+  game.player._lastAlloc = pAlloc; game.comp._lastAlloc = cAlloc;
+
+  const newBadges = checkBadges();
+
+  return {
+    narration: buildNarration(pAlloc, newUsersP, newPartnersP, shareUser, sharePartner),
+    deltaUsers: game.player.nutzer - nutzerBeforeP,
+    deltaPartners: game.player.partner - partnerBeforeP,
+    revenueP, newBadges,
+  };
+}
+
+function buildNarration(pAlloc, newUsersP, newPartnersP, shareUser, sharePartner){
+  const lines = [];
+  lines.push(`Ihr habt ${fmt(Math.max(0,newUsersP))} neue Studierende und ${fmt(Math.max(0,newPartnersP))} neue Partnerbetriebe gewonnen.`);
+  if (shareUser > 0.62) lines.push('Euer Netzwerkwert für Studierende liegt klar vor UniMarkt — der Flywheel-Effekt beginnt zu greifen. 🔥');
+  else if (shareUser < 0.40) lines.push('UniMarkt bietet Studierenden aktuell den höheren Netzwerkwert — ihr verliert an Boden. ⚠️');
+  if (sharePartner > 0.62) lines.push('Auch bei Partnerbetrieben seid ihr klar attraktiver als UniMarkt.');
+  else if (sharePartner < 0.40) lines.push('Partnerbetriebe finden UniMarkt aktuell attraktiver — eure Partner-Tools brauchen mehr Aufmerksamkeit.');
+  if (game.player.lockInUser > 0.35) lines.push(`Eure Wechselkosten bei Studierenden sind spürbar gestiegen (Lock-in ${pct(game.player.lockInUser)}).`);
+  return lines.join(' ');
+}
+
+/* ---------------- Badges ---------------- */
+function checkBadges(){
+  const p = game.player;
+  const added = [];
+  const grant = (id) => { if (!game.badges.has(id)) { game.badges.set(id, {round: game.round}); added.push(id); } };
+
+  if (p.nutzer >= 500) grant('kritische_masse');
+  if (p._lastShareUser > 0.65) grant('flywheel');
+  const initialCac = 6/(1+CONFIG.START_NUTZER/400);
+  const curCac = 6/(1+p.nutzer/400);
+  if (curCac < initialCac*0.5) grant('skalenmeister');
+  if (p.lockInUser >= 0.5 || p.lockInPartner >= 0.6) grant('lockin_champion');
+  const v = computeValues(p);
+  if (v.featureLevel > 1.5) grant('communitybuilder');
+  if (v.toolsLevel > 1.5) grant('systemarchitekt');
+  return added;
+}
+
+/* ---------------- Rendering: Network Graph ---------------- */
+function buildNetworkGraphSVG(nutzer, partner, featureLevel, toolsLevel, accent, accentSoft){
+  const cx=150, cy=105;
+  const nUsers = clamp(Math.round(Math.sqrt(nutzer)), 3, 40);
+  const nPartners = clamp(Math.round(Math.sqrt(partner)*1.5), 2, 14);
+  const userPts = [];
+  for (let i=0;i<nUsers;i++){
+    const angle = i*137.5*Math.PI/180;
+    const r = 34 + (i/nUsers)*52;
+    userPts.push([cx + r*Math.cos(angle), cy + r*Math.sin(angle)*0.82]);
+  }
+  const partnerPts = [];
+  for (let i=0;i<nPartners;i++){
+    const angle = (i/nPartners)*2*Math.PI + 0.3;
+    const r = 92;
+    partnerPts.push([cx + r*Math.cos(angle), cy + r*Math.sin(angle)*0.82]);
+  }
+
+  let svg = '';
+  // hub -> user faint links
+  userPts.forEach(pt => { svg += `<line x1="${cx}" y1="${cy}" x2="${pt[0].toFixed(1)}" y2="${pt[1].toFixed(1)}" stroke="${accent}" stroke-opacity="0.10" stroke-width="1"/>`; });
+  // peer-to-peer links (direct network effect)
+  const peerLinks = clamp(Math.round(featureLevel*nUsers*0.6), 0, nUsers*2);
+  for (let i=0;i<peerLinks;i++){
+    const a = userPts[i % userPts.length];
+    const b = userPts[(i + 1 + Math.floor(i/3)) % userPts.length];
+    svg += `<line x1="${a[0].toFixed(1)}" y1="${a[1].toFixed(1)}" x2="${b[0].toFixed(1)}" y2="${b[1].toFixed(1)}" stroke="${accent}" stroke-opacity="0.28" stroke-width="1"/>`;
+  }
+  // partner -> nearby user links (indirect network effect)
+  const partnerLinkOpacity = clamp(0.10 + toolsLevel*0.22, 0.10, 0.55);
+  partnerPts.forEach((pp, i) => {
+    const target = userPts[(i*3) % Math.max(1,userPts.length)] || [cx,cy];
+    svg += `<line x1="${pp[0].toFixed(1)}" y1="${pp[1].toFixed(1)}" x2="${target[0].toFixed(1)}" y2="${target[1].toFixed(1)}" stroke="${accent}" stroke-opacity="${partnerLinkOpacity.toFixed(2)}" stroke-width="1"/>`;
+  });
+  // partner nodes (squares)
+  partnerPts.forEach(pp => {
+    svg += `<rect x="${(pp[0]-4).toFixed(1)}" y="${(pp[1]-4).toFixed(1)}" width="8" height="8" rx="2" fill="${accentSoft}" stroke="${accent}" stroke-width="1.1"/>`;
+  });
+  // user nodes (circles)
+  userPts.forEach(pt => {
+    svg += `<circle cx="${pt[0].toFixed(1)}" cy="${pt[1].toFixed(1)}" r="3.4" fill="${accent}" fill-opacity="0.85"/>`;
+  });
+  // hub
+  svg += `<circle cx="${cx}" cy="${cy}" r="15" fill="${accent}"/><circle cx="${cx}" cy="${cy}" r="15" fill="none" stroke="#ffffff" stroke-opacity="0.25" stroke-width="1"/>`;
+
+  return svg;
+}
+
+function renderGraphInto(svgEl, nutzer, partner, featureLevel, toolsLevel, accent, accentSoft){
+  svgEl.innerHTML = buildNetworkGraphSVG(nutzer, partner, featureLevel, toolsLevel, accent, accentSoft);
+}
+
+/* ---------------- Rendering: Line Chart ---------------- */
+function buildLineChartSVG(seriesA, seriesB, colorA, colorB){
+  const w=400, h=150, padL=34, padR=10, padT=10, padB=22;
+  const allVals = seriesA.concat(seriesB);
+  const maxV = Math.max(10, ...allVals);
+  const n = seriesA.length;
+  const x = i => padL + (n<=1?0:(i/(n-1))*(w-padL-padR));
+  const y = v => (h-padB) - (v/maxV)*(h-padT-padB);
+
+  let svg = '';
+  // grid lines
+  for (let g=0; g<=3; g++){
+    const gy = padT + (g/3)*(h-padT-padB);
+    svg += `<line x1="${padL}" y1="${gy.toFixed(1)}" x2="${w-padR}" y2="${gy.toFixed(1)}" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>`;
+    const val = Math.round(maxV - (g/3)*maxV);
+    svg += `<text x="${padL-6}" y="${(gy+3).toFixed(1)}" text-anchor="end" font-size="8.5" fill="#6D77A0" font-family="ui-monospace,monospace">${val}</text>`;
+  }
+  const mkPath = (series) => series.map((v,i)=> `${i===0?'M':'L'} ${x(i).toFixed(1)} ${y(v).toFixed(1)}`).join(' ');
+  svg += `<path d="${mkPath(seriesB)}" fill="none" stroke="${colorB}" stroke-width="2" opacity="0.9"/>`;
+  svg += `<path d="${mkPath(seriesA)}" fill="none" stroke="${colorA}" stroke-width="2.4"/>`;
+  seriesA.forEach((v,i)=>{ svg += `<circle cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="2.4" fill="${colorA}"/>`; });
+  seriesB.forEach((v,i)=>{ svg += `<circle cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="2.1" fill="${colorB}"/>`; });
+  // x axis labels
+  seriesA.forEach((v,i)=>{
+    if (n<=9 || i%2===0 || i===n-1){
+      svg += `<text x="${x(i).toFixed(1)}" y="${h-6}" text-anchor="middle" font-size="8.5" fill="#6D77A0" font-family="ui-monospace,monospace">${i}</text>`;
+    }
+  });
+  return svg;
+}
+
+function renderChartInto(svgEl, seriesA, seriesB){
+  svgEl.innerHTML = buildLineChartSVG(seriesA, seriesB, 'var(--accent-player)'.trim()==='var(--accent-player)' ? getCss('--accent-player') : '#FF7A45', getCss('--accent-rival'));
+}
+function getCss(varName){
+  return getComputedStyle(document.documentElement).getPropertyValue(varName).trim() || '#FF7A45';
+}
+
+/* ---------------- Stat cards ---------------- */
+function statsHTML(p){
+  const v = computeValues(p);
+  return `
+    <div class="stat">
+      <div class="stat-label">Studierende</div>
+      <div class="stat-value num">${fmt(p.nutzer)}</div>
+      <div class="stat-sub">von ${fmt(CONFIG.TOTAL_STUDENTS)} Markt</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Partnerbetriebe</div>
+      <div class="stat-value num">${fmt(p.partner)}</div>
+      <div class="stat-sub">von ${fmt(CONFIG.TOTAL_PARTNERS)} Markt</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Netzwerkwert (Studi-Sicht)</div>
+      <div class="stat-value num">${fmt(v.valueUser,1)}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${clamp(p._lastShareUser*100,4,100).toFixed(0)}%"></div></div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Lock-in (Studi / Partner)</div>
+      <div class="stat-value num">${pct(p.lockInUser)} / ${pct(p.lockInPartner)}</div>
+      <div class="stat-sub">Wechselkosten-Index</div>
+    </div>
+  `;
+}
+
+/* ---------------- Sliders ---------------- */
+const SLIDER_DEFS = [
+  { key:'mktUser', icon:'📣', label:'Studierenden-Marketing', tip:'Bezahlte Reichweite für neue Studierende (Social Ads, Campus-Events, Flyer). Direkter Hebel für Wachstum auf der Nutzerseite.' },
+  { key:'mktPartner', icon:'🤝', label:'Partner-Akquise', tip:'Vertrieb, der Cafés, Copyshops, Nachhilfe-Anbieter & Vereine als Partner gewinnt. Baut die andere Marktseite auf — Voraussetzung für indirekte Netzwerkeffekte.' },
+  { key:'featDirect', icon:'👥', label:'Direkte Netzwerk-Features', tip:'Freunde-Funktion, Gruppenbestellungen, Bewertungen, Mitfahr-Matching. Erhöht den Wert, den Studierende aus anderen Studierenden ziehen — die Basis direkter Netzwerkeffekte und organischer Weiterempfehlung.' },
+  { key:'toolsIndirect', icon:'🧩', label:'Partner-Tools & Integration', tip:'Kassenanbindung, Analytics-Dashboard, API-Zugang für Partner. Stärkt den indirekten Netzwerkeffekt (mehr Nutzer → mehr Wert für Partner) und erhöht gleichzeitig den Lock-in von Partnern.' },
+];
+
+function renderSliders(){
+  const container = document.getElementById('sliders-container');
+  container.innerHTML = SLIDER_DEFS.map(def => `
+    <div class="slider-row">
+      <div class="slider-row-head">
+        <div class="slider-label"><span class="ico">${def.icon}</span> ${def.label}
+          <button class="info-btn" onclick="toggleTip('tip-${def.key}')">i</button>
+        </div>
+        <div class="slider-value num" id="val-${def.key}">${game.sliders[def.key]}</div>
+      </div>
+      <input type="range" id="slider-${def.key}" min="0" max="${game.budgetPlayer}" step="10" value="${game.sliders[def.key]}" oninput="onSliderInput('${def.key}')">
+      <div class="slider-tip" id="tip-${def.key}">${def.tip}</div>
+    </div>
+  `).join('');
+  updateRemaining();
+}
+
+function onSliderInput(key){
+  const el = document.getElementById('slider-'+key);
+  game.sliders[key] = Number(el.value);
+  document.getElementById('val-'+key).textContent = fmt(game.sliders[key]);
+  updateRemaining();
+}
+function onProvisionInput(){
+  const el = document.getElementById('slider-provision');
+  game.sliderProvision = Number(el.value)/100;
+  document.getElementById('val-provision').textContent = el.value+'%';
+}
+function toggleTip(id){
+  document.getElementById(id).classList.toggle('show');
+}
+function distributeEvenly(){
+  const each = Math.floor(game.budgetPlayer/4/10)*10;
+  SLIDER_DEFS.forEach(def => {
+    game.sliders[def.key] = each;
+    document.getElementById('slider-'+def.key).value = each;
+    document.getElementById('val-'+def.key).textContent = fmt(each);
+  });
+  updateRemaining();
+}
+function updateRemaining(){
+  const sum = SLIDER_DEFS.reduce((s,d)=> s + game.sliders[d.key], 0);
+  const remaining = game.budgetPlayer - sum;
+  const chip = document.getElementById('remaining-chip');
+  chip.textContent = `Verbleibend: ${fmt(remaining)}`;
+  chip.className = 'remaining ' + (remaining < 0 ? 'over' : 'ok');
+  document.getElementById('confirm-btn').disabled = remaining < 0;
+}
+
+/* ---------------- Round flow ---------------- */
+function goToScreen(name){
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-'+name).classList.add('active');
+}
+
+function startGame(){
+  game = freshGame();
+  game.sliderProvision = 0.15;
+  buildPrimerGrid();
+  buildGlossary();
+  renderHeroGraph();
+  nextRoundSetup();
+}
+
+function nextRoundSetup(){
+  // scale sliders proportionally to new budget, keep ratios
+  const prevSum = SLIDER_DEFS.reduce((s,d)=> s + game.sliders[d.key], 0) || 1;
+  SLIDER_DEFS.forEach(d => {
+    game.sliders[d.key] = Math.round((game.sliders[d.key]/prevSum) * game.budgetPlayer / 10) * 10;
+  });
+  renderDashboard(true);
+}
+
+function confirmRound(){
+  const result = simulateRound();
+  renderDashboard(false);
+  showRoundModal(result);
+}
+
+function renderDashboard(isPreRound){
+  const roundLabel = Math.min(game.round + (isPreRound?1:0), CONFIG.TOTAL_ROUNDS);
+  document.getElementById('round-chip').textContent = `RUNDE ${roundLabel} / ${CONFIG.TOTAL_ROUNDS}`;
+  document.getElementById('budget-chip').textContent = `💰 Budget: ${fmt(game.budgetPlayer)}`;
+
+  const dots = document.getElementById('round-dots');
+  dots.innerHTML = '';
+  for (let i=1;i<=CONFIG.TOTAL_ROUNDS;i++){
+    const d = document.createElement('div');
+    d.className = 'round-dot' + (i < roundLabel ? ' done' : (i===roundLabel ? ' current' : ''));
+    dots.appendChild(d);
+  }
+
+  const evBanner = document.getElementById('event-banner');
+  if (!isPreRound && game.eventThisRound){
+    evBanner.classList.add('show');
+    document.getElementById('event-icon').textContent = game.eventThisRound.icon;
+    document.getElementById('event-title').textContent = game.eventThisRound.title;
+    document.getElementById('event-desc').textContent = game.eventThisRound.desc;
+  } else {
+    evBanner.classList.remove('show');
+  }
+
+  const pv = computeValues(game.player);
+  const cv = computeValues(game.comp);
+  renderGraphInto(document.getElementById('graph-player'), game.player.nutzer, game.player.partner, pv.featureLevel, pv.toolsLevel, getCss('--accent-player'), getCss('--accent-player-soft'));
+  renderGraphInto(document.getElementById('graph-rival'), game.comp.nutzer, game.comp.partner, cv.featureLevel, cv.toolsLevel, getCss('--accent-rival'), getCss('--accent-rival-soft'));
+
+  document.getElementById('stats-player').innerHTML = statsHTML(game.player);
+  document.getElementById('stats-rival').innerHTML = statsHTML(game.comp);
+
+  renderChartInto(document.getElementById('chart-users'), game.player.nutzerHist, game.comp.nutzerHist);
+  renderChartInto(document.getElementById('chart-partners'), game.player.partnerHist, game.comp.partnerHist);
+
+  renderSliders();
+  document.getElementById('slider-provision').value = Math.round(game.sliderProvision*100);
+  document.getElementById('val-provision').textContent = Math.round(game.sliderProvision*100)+'%';
+
+  renderLog();
+
+  if (game.round >= CONFIG.TOTAL_ROUNDS && !isPreRound){
+    game.over = true;
+  }
+}
+
+function renderLog(){
+  const container = document.getElementById('log-entries');
+  if (game.logs.length===0){
+    container.innerHTML = '<div class="log-entry">Noch keine Runde gespielt. Trefft eure ersten Entscheidungen und bestätigt die Runde.</div>';
+    return;
+  }
+  container.innerHTML = game.logs.slice().reverse().map(l => `<div class="log-entry"><span class="lr">R${l.round}</span>${l.text}${l.badges.length? ' <span class="badge-inline">🏅 '+l.badges.map(b=>BADGE_DEFS[b].label).join(', ')+'</span>':''}</div>`).join('');
+}
+
+function showRoundModal(result){
+  document.getElementById('modal-round-label').textContent = `Runde ${game.round} abgeschlossen`;
+  document.getElementById('modal-title').textContent = game.round >= CONFIG.TOTAL_ROUNDS ? 'Letzte Runde abgeschlossen!' : 'So lief die Runde';
+  document.getElementById('modal-narration').textContent = result.narration;
+
+  const deltas = document.getElementById('modal-deltas');
+  deltas.innerHTML = `
+    <div class="delta"><div class="d-label">Δ Studierende</div><div class="d-value ${result.deltaUsers>=0?'pos':'neg'} num">${result.deltaUsers>=0?'+':''}${fmt(result.deltaUsers)}</div></div>
+    <div class="delta"><div class="d-label">Δ Partner</div><div class="d-value ${result.deltaPartners>=0?'pos':'neg'} num">${result.deltaPartners>=0?'+':''}${fmt(result.deltaPartners)}</div></div>
+    <div class="delta"><div class="d-label">Umsatz Runde</div><div class="d-value num">${fmt(result.revenueP)} €</div></div>
+  `;
+
+  const badgesEl = document.getElementById('modal-badges');
+  if (result.newBadges.length){
+    badgesEl.innerHTML = result.newBadges.map(id => `
+      <div class="badge-unlock"><span style="font-size:20px;">${BADGE_DEFS[id].icon}</span>
+        <div><strong>${BADGE_DEFS[id].label}</strong> freigeschaltet — ${BADGE_DEFS[id].desc}</div>
+      </div>`).join('');
+    result.newBadges.forEach(id => showToast(`🏅 ${BADGE_DEFS[id].label} freigeschaltet!`));
+  } else {
+    badgesEl.innerHTML = '';
+  }
+
+  game.logs.push({ round: game.round, text: result.narration, badges: result.newBadges });
+
+  document.getElementById('modal-next-btn').textContent = game.round >= CONFIG.TOTAL_ROUNDS ? 'Ergebnis ansehen →' : 'Weiter →';
+  document.getElementById('round-modal').classList.add('show');
+}
+
+function closeRoundModal(){
+  document.getElementById('round-modal').classList.remove('show');
+  if (game.round >= CONFIG.TOTAL_ROUNDS){
+    renderEndScreen();
+    goToScreen('end');
+  } else {
+    nextRoundSetup();
+  }
+}
+
+/* ---------------- End screen ---------------- */
+function renderEndScreen(){
+  const p = game.player, c = game.comp;
+  const shareUser = p.nutzer/(p.nutzer+c.nutzer+1e-6);
+  const sharePartner = p.partner/(p.partner+c.partner+1e-6);
+  const avgShare = (shareUser+sharePartner)/2;
+
+  let icon, title, desc;
+  if (avgShare > 0.70){ icon='🏆'; title='Tipping Point erreicht — CampusConnect dominiert!'; desc='Eure Netzwerkeffekte haben sich gegenseitig verstärkt: mehr Studierende zogen mehr Partner an, mehr Partner zogen mehr Studierende an. Der Markt ist zu euren Gunsten gekippt — ein klassisches "Winner-takes-most"-Ergebnis in Plattformmärkten.'; }
+  else if (avgShare > 0.55){ icon='📈'; title='Marktführerschaft erreicht'; desc='CampusConnect liegt spürbar vor UniMarkt. Die Netzwerkeffekte haben angefangen, für euch zu arbeiten — für einen vollständigen Tipping Point hätte etwas mehr Fokus auf die schwächere Marktseite gereicht.'; }
+  else if (avgShare > 0.45){ icon='⚖️'; title='Ausgeglichener Duopol-Markt'; desc='CampusConnect und UniMarkt halten sich in etwa die Waage. In der Praxis können zwei Plattformen nebeneinander bestehen, wenn Netzwerkeffekte nicht stark genug sind oder beide Seiten gut differenziert sind.'; }
+  else if (avgShare > 0.30){ icon='📉'; title='Zweiter Platz — UniMarkt führt'; desc='UniMarkt hat den stärkeren Netzwerkwert aufgebaut und zieht dadurch schneller neue Nutzer:innen und Partner an. Ein knapper Rückstand kann sich durch Netzwerkeffekte schnell vergrößern.'; }
+  else { icon='🪦'; title='Verdrängt — der Markt ist an UniMarkt gekippt'; desc='UniMarkt hat die kritische Masse zuerst erreicht und den Markt für sich entschieden. Das zeigt, wie mächtig (und unversöhnlich) Netzwerkeffekte sein können, wenn ein Wettbewerber früh einen Vorsprung aufbaut.'; }
+
+  document.getElementById('end-icon').textContent = icon;
+  document.getElementById('end-title').textContent = title;
+  document.getElementById('end-desc').textContent = desc;
+
+  const initialCac = 6/(1+CONFIG.START_NUTZER/400);
+  const finalCacP = p.cacUserHist[p.cacUserHist.length-1];
+  const cacReduction = Math.round((1 - finalCacP/initialCac)*100);
+
+  document.getElementById('final-table-body').innerHTML = `
+    <tr><td>Studierende</td><td class="player-col">${fmt(p.nutzer)}</td><td class="rival-col">${fmt(c.nutzer)}</td></tr>
+    <tr><td>Partnerbetriebe</td><td class="player-col">${fmt(p.partner)}</td><td class="rival-col">${fmt(c.partner)}</td></tr>
+    <tr><td>Marktanteil Studierende</td><td class="player-col">${pct(shareUser)}</td><td class="rival-col">${pct(1-shareUser)}</td></tr>
+    <tr><td>Marktanteil Partner</td><td class="player-col">${pct(sharePartner)}</td><td class="rival-col">${pct(1-sharePartner)}</td></tr>
+    <tr><td>Gesamtumsatz (8 Runden)</td><td class="player-col">${fmt(p.totalRevenue)} €</td><td class="rival-col">${fmt(c.totalRevenue)} €</td></tr>
+    <tr><td>Lock-in Studierende</td><td class="player-col">${pct(p.lockInUser)}</td><td class="rival-col">${pct(c.lockInUser)}</td></tr>
+    <tr><td>Lock-in Partner</td><td class="player-col">${pct(p.lockInPartner)}</td><td class="rival-col">${pct(c.lockInPartner)}</td></tr>
+    <tr><td>Budget letzte Runde</td><td class="player-col">${fmt(game.budgetPlayer)}</td><td class="rival-col">${fmt(game.budgetComp)}</td></tr>
+  `;
+
+  const badgesGrid = document.getElementById('badges-grid');
+  const earnedIds = Array.from(game.badges.keys());
+  const allIds = Object.keys(BADGE_DEFS);
+  badgesGrid.innerHTML = allIds.map(id => {
+    const earned = earnedIds.includes(id);
+    const def = BADGE_DEFS[id];
+    return `<div class="badge-card ${earned?'':'empty'}"><div class="b-icon">${def.icon}</div><h5>${def.label}</h5><p>${earned? 'Runde '+game.badges.get(id).round : 'nicht erreicht'}</p></div>`;
+  }).join('');
+
+  const pv = computeValues(p);
+  document.getElementById('debrief-container').innerHTML = `
+    <div class="debrief-section">
+      <h4>👥 Direkte Netzwerkeffekte</h4>
+      <p>Euer Direkt-Feature-Level erreichte <span class="num">${pv.featureLevel.toFixed(2)}</span> (Skala 0–2). Dieser Wert bestimmte, wie stark eure Studierenden allein durch die Anzahl anderer Studierender profitierten — z. B. via Freunde-Funktion und Mundpropaganda. Je höher dieser Wert, desto mehr Wachstum entstand organisch, ganz ohne zusätzliches Marketingbudget.</p>
+    </div>
+    <div class="debrief-section">
+      <h4>🔁 Indirekte Netzwerkeffekte</h4>
+      <p>Euer Partner-Tools-Level erreichte <span class="num">${pv.toolsLevel.toFixed(2)}</span>. Er bestimmte, wie stark mehr Studierende die Plattform für Partner wertvoller machten — und umgekehrt. Am Ende hattet ihr ${fmt(p.partner)} Partnerbetriebe und ${fmt(p.nutzer)} Studierende: Ohne diese Kreuzeffekte zwischen beiden Seiten wäre keine der beiden Zahlen so gewachsen.</p>
+    </div>
+    <div class="debrief-section">
+      <h4>📈 Skaleneffekte</h4>
+      <p>Eure Kosten pro neuer Nutzer:in sanken von anfangs <span class="num">${initialCac.toFixed(2)}</span> auf <span class="num">${finalCacP.toFixed(2)}</span> Budget-Einheiten — ein Rückgang von rund <span class="num">${cacReduction}%</span>. Gleichzeitig stieg euer Rundenbudget von <span class="num">${fmt(CONFIG.BASE_BUDGET)}</span> auf <span class="num">${fmt(game.budgetPlayer)}</span>, weil Umsätze reinvestiert wurden. Größe hat sich also buchstäblich ausgezahlt.</p>
+    </div>
+    <div class="debrief-section">
+      <h4>🔒 Lock-in-Effekte</h4>
+      <p>Euer Lock-in-Index stieg auf <span class="num">${pct(p.lockInUser)}</span> bei Studierenden und <span class="num">${pct(p.lockInPartner)}</span> bei Partnern. Das senkte die Abwanderungsrate spürbar — selbst wenn UniMarkt in einzelnen Runden kurzzeitig attraktiver war, blieben mehr Nutzer:innen und Partner bei euch, weil ein Wechsel Kosten (Zeit, Daten, Integration) verursacht hätte.</p>
+    </div>
+  `;
+}
+
+/* ---------------- Toast ---------------- */
+function showToast(text){
+  const wrap = document.getElementById('toast-wrap');
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.textContent = text;
+  wrap.appendChild(t);
+  setTimeout(() => { t.remove(); }, 4200);
+}
+
+/* ---------------- Glossary & Primer ---------------- */
+function buildGlossary(){
+  document.getElementById('glossary-items').innerHTML = CONCEPTS.map(c => `
+    <div class="g-item"><h5>${c.icon} ${c.title}</h5><p>${c.detail}</p></div>
+  `).join('');
+}
+function buildPrimerGrid(){
+  document.getElementById('primer-grid').innerHTML = CONCEPTS.map((c,i) => `
+    <div class="primer-card" id="primer-${i}" onclick="togglePrimer(${i})">
+      <div class="pc-icon">${c.icon}</div>
+      <h4>${c.title}</h4>
+      <p>${c.short}</p>
+      <div class="pc-detail">${c.detail}</div>
+      <div class="pc-toggle">mehr erfahren ▾</div>
+    </div>
+  `).join('');
+}
+function togglePrimer(i){
+  document.getElementById('primer-'+i).classList.toggle('open');
+}
+function openGlossary(){
+  document.getElementById('glossary-panel').classList.add('open');
+  document.getElementById('scrim').classList.add('show');
+}
+function closeGlossary(){
+  document.getElementById('glossary-panel').classList.remove('open');
+  document.getElementById('scrim').classList.remove('show');
+}
+
+/* ---------------- Hero decorative graph ---------------- */
+function renderHeroGraph(){
+  const g = document.getElementById('hero-graph-g');
+  g.innerHTML = buildNetworkGraphSVG(1400, 90, 1.3, 1.1, '#FF7A45', 'rgba(255,122,69,0.25)').replace(/300 105/g,'150 150');
+  g.setAttribute('transform','translate(0,45) scale(1)');
+}
+
+/* ---------------- Reset ---------------- */
+function resetGame(){
+  game = null;
+  goToScreen('intro');
+}
+
+/* ---------------- Init ---------------- */
+buildPrimerGrid();
+buildGlossary();
+renderHeroGraph();
+</script>
+</body>
+</html>
